@@ -1,0 +1,1 @@
+Performance-related test for HM9000
