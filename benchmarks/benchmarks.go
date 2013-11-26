@@ -2,10 +2,16 @@ package main
 
 import (
 	"fmt"
+	"github.com/cloudfoundry/hm9000/config"
+	"github.com/cloudfoundry/hm9000/helpers/workerpool"
+	storepackage "github.com/cloudfoundry/hm9000/store"
+	"github.com/cloudfoundry/hm9000/storeadapter"
 	"github.com/cloudfoundry/hm9000/testhelpers/desiredstateserver"
+	"github.com/cloudfoundry/hm9000/testhelpers/fakelogger"
 	"github.com/cloudfoundry/hm9000/testhelpers/natsrunner"
 	"github.com/cloudfoundry/hm9000/testhelpers/storerunner"
 	"github.com/cloudfoundry/hmperformance/simulator"
+	"github.com/cloudfoundry/loggregatorlib/cfcomponent/localip"
 	"io"
 	"math/rand"
 	"net/http"
@@ -18,6 +24,7 @@ import (
 var nats *natsrunner.NATSRunner
 var etcd *storerunner.ETCDClusterRunner
 var cmdsToStop []*exec.Cmd
+var store storepackage.Store
 
 const collectorFetchInterval = 30
 
@@ -33,9 +40,13 @@ func main() {
 
 	etcd = storerunner.NewETCDClusterRunner(4001, 1)
 	etcd.Start()
+	adapter := storeadapter.NewETCDStoreAdapter(etcd.NodeURLS(), workerpool.NewWorkerPool(30))
+	adapter.Connect()
+	conf, _ := config.FromFile("./config.json")
+	store = storepackage.NewStore(conf, adapter, fakelogger.NewFakeLogger())
 
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	sim := simulator.New(100000, 10, r, nats.MessageBus, fakeCC)
+	sim := simulator.New(3000, 10, r, nats.MessageBus, fakeCC)
 
 	//start all the HM components (make them pipe to stdout)
 	start("listen", false)
@@ -51,18 +62,30 @@ func main() {
 }
 
 func Tick(sim *simulator.Simulator) {
+	i := 0
 	for {
 		t := time.Now()
 		sim.TickOneSecond()
 		fmt.Printf("TICKING SIMULATOR TOOK: %s\n", time.Since(t))
 		time.Sleep(time.Second)
+		err := store.VerifyFreshness(time.Now())
+		if err == nil {
+			fmt.Printf("\n\n~~~~ STORE IS FRESH: %ds\n\n", i)
+		} else {
+			fmt.Printf("\n\n~~~~ STORE IS NOT FRESH: %ds (%s)\n\n", i, err.Error())
+		}
+		i++
 	}
 }
 
 func Fetch() {
 	for {
 		t := time.Now()
-		url := "http://metrics_server_user:canHazMetrics@10.80.130.83:7879/varz"
+		ip, err := localip.LocalIP()
+		if err != nil {
+			panic(err)
+		}
+		url := "http://metrics_server_user:canHazMetrics@" + ip + ":7879/varz"
 		resp, err := http.Get(url)
 		if err != nil {
 			panic(err)
