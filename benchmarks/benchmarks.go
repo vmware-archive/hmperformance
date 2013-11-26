@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"time"
 )
 
@@ -46,8 +47,12 @@ func main() {
 	store = storepackage.NewStore(conf, adapter, fakelogger.NewFakeLogger())
 
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	sim := simulator.New(3000, 10, r, nats.MessageBus, fakeCC)
+	num, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
 
+	sim := simulator.New(num, 10, r, nats.MessageBus, fakeCC)
 	//start all the HM components (make them pipe to stdout)
 	start("listen", false)
 	start("fetch_desired", true)
@@ -62,7 +67,7 @@ func main() {
 }
 
 func Tick(sim *simulator.Simulator) {
-	i := 0
+	startTime := time.Now()
 	for {
 		t := time.Now()
 		sim.TickOneSecond()
@@ -70,9 +75,9 @@ func Tick(sim *simulator.Simulator) {
 		time.Sleep(time.Second)
 		err := store.VerifyFreshness(time.Now())
 		if err == nil {
-			fmt.Printf("\n\n~~~~ STORE IS FRESH: %ds\n\n", i)
+			fmt.Printf("\n\n~~~~ STORE IS FRESH: %s\n\n", time.Since(startTime))
 		} else {
-			fmt.Printf("\n\n~~~~ STORE IS NOT FRESH: %ds (%s)\n\n", i, err.Error())
+			fmt.Printf("\n\n~~~~ STORE IS NOT FRESH: %s (%s)\n\n", time.Since(startTime), err.Error())
 		}
 		i++
 	}

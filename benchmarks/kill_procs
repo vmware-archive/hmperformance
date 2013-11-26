@@ -1,0 +1,1 @@
+pkill etcd & pkill gnatsd & pkill hm9000
