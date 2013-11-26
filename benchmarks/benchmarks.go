@@ -9,7 +9,7 @@ import (
 	"github.com/cloudfoundry/hm9000/testhelpers/desiredstateserver"
 	"github.com/cloudfoundry/hm9000/testhelpers/fakelogger"
 	"github.com/cloudfoundry/hm9000/testhelpers/natsrunner"
-	"github.com/cloudfoundry/hm9000/testhelpers/storerunner"
+	// "github.com/cloudfoundry/hm9000/testhelpers/storerunner"
 	"github.com/cloudfoundry/hmperformance/simulator"
 	"github.com/cloudfoundry/loggregatorlib/cfcomponent/localip"
 	"io"
@@ -23,7 +23,8 @@ import (
 )
 
 var nats *natsrunner.NATSRunner
-var etcd *storerunner.ETCDClusterRunner
+
+// var etcd *storerunner.ETCDClusterRunner
 var cmdsToStop []*exec.Cmd
 var store storepackage.Store
 
@@ -39,11 +40,11 @@ func main() {
 	fakeCC := desiredstateserver.NewDesiredStateServer()
 	go fakeCC.SpinUp(6001)
 
-	etcd = storerunner.NewETCDClusterRunner(4001, 1)
-	etcd.Start()
-	adapter := storeadapter.NewETCDStoreAdapter(etcd.NodeURLS(), workerpool.NewWorkerPool(30))
-	adapter.Connect()
+	// etcd = storerunner.NewETCDClusterRunner(4001, 1)
+	// etcd.Start()
 	conf, _ := config.FromFile("./config.json")
+	adapter := storeadapter.NewETCDStoreAdapter(conf.StoreURLs, workerpool.NewWorkerPool(30))
+	adapter.Connect()
 	store = storepackage.NewStore(conf, adapter, fakelogger.NewFakeLogger())
 
 	r := rand.New(rand.NewSource(time.Now().Unix()))
@@ -79,7 +80,6 @@ func Tick(sim *simulator.Simulator) {
 		} else {
 			fmt.Printf("\n\n~~~~ STORE IS NOT FRESH: %s (%s)\n\n", time.Since(startTime), err.Error())
 		}
-		i++
 	}
 }
 
