@@ -1,6 +1,6 @@
-Performance-related test for HM9000
+#Performance-related test for HM9000
 
-# To Run These Tests
+##To Run The Benchmark
 
 ### 1. Install HM9000 and fetch the performance repo
 
