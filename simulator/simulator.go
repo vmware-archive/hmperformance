@@ -100,7 +100,6 @@ func (s *Simulator) emitAdvertiseFor(dea string) {
 }
 
 func (s *Simulator) emitHeartbeatFor(dea string) {
-	fmt.Printf("Emitting heartbeat for %s\n", dea)
 	hb := models.Heartbeat{
 		DeaGuid:            dea,
 		InstanceHeartbeats: make([]models.InstanceHeartbeat, len(s.DEAs[dea])),
